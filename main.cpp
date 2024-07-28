@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <conio.h>
 #include <windows.h>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -15,6 +17,8 @@ int playerPos = height / 2;
 vector<int> obstaclePos(width, -1);
 int level = 1;
 int obstacleSpeed = 200;
+int selectedLevel = 1;
+int selectedMainMenuOption = 1;
 
 void draw() {
     system("cls");
@@ -61,10 +65,65 @@ void nextLevel() {
     playerPos = height / 2;
     obstaclePos = vector<int>(width, -1);
     cout << "Next Level: " << level << "!" << endl;
-    Sleep(1000);
+    this_thread::sleep_for(chrono::milliseconds(1000));
+}
+
+void displayLevelMenu() {
+    system("cls");
+    cout << "Select Level (1-5): " << endl;
+    for (int i = 1; i <= 5; i++) {
+        if (i == selectedLevel) {
+            cout << "> Level " << i << endl;
+        } else {
+            cout << "  Level " << i << endl;
+        }
+    }
+}
+
+void displayMainMenu() {
+    system("cls");
+    cout << "Main Menu: " << endl;
+    cout << (selectedMainMenuOption == 1 ? "> Start Game" : "  Start Game") << endl;
+    cout << (selectedMainMenuOption == 2 ? "> Exit" : "  Exit") << endl;
 }
 
 int main() {
+    // Menu chính
+    while (true) {
+        displayMainMenu();
+        if (_kbhit()) {
+            char ch = _getch();
+            if (ch == 'w' && selectedMainMenuOption > 1) {
+                selectedMainMenuOption--;
+            } else if (ch == 's' && selectedMainMenuOption < 2) {
+                selectedMainMenuOption++;
+            } else if (ch == '\r') { 
+                if (selectedMainMenuOption == 1) {
+                    break;
+                } else if (selectedMainMenuOption == 2) {
+                    return 0;
+                }
+            }
+        }
+    }
+
+    // Menu chọn màn chơi
+    while (true) {
+        displayLevelMenu();
+        if (_kbhit()) {
+            char ch = _getch();
+            if (ch == 'w' && selectedLevel > 1) {
+                selectedLevel--;
+            } else if (ch == 's' && selectedLevel < 5) {
+                selectedLevel++;
+            } else if (ch == '\r') {
+                level = selectedLevel;
+                obstacleSpeed = 200 - (level - 1) * 20;
+                break;
+            }
+        }
+    }
+
     while (true) {
         if (_kbhit()) {
             char ch = _getch();
@@ -80,7 +139,7 @@ int main() {
             cout << "Game Over!" << endl;
             break;
         }
-        Sleep(obstacleSpeed);
+        this_thread::sleep_for(chrono::milliseconds(obstacleSpeed));
         if (rand() % 10 == 0) {
             nextLevel();
         }
