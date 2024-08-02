@@ -1,148 +1,295 @@
+#include <SDL.h>
 #include <iostream>
 #include <vector>
 #include <cstdlib>
-#include <conio.h>
-#include <windows.h>
 #include <chrono>
 #include <thread>
 
 using namespace std;
 
-const int width = 20;
-const int height = 10;
-const char playerChar = '>';
-const char obstacleChar = '=';
-const char emptyChar = ' ';
-int playerPos = height / 2;
-vector<int> obstaclePos(width, -1);
-int level = 1;
-int obstacleSpeed = 200;
-int selectedLevel = 1;
-int selectedMainMenuOption = 1;
+const int width = 800;
+const int height = 600;
+const int playerWidth = 20;
+const int playerHeight = 40;
+const int playerPosY = height - playerHeight - 200;
+const int playerPosX = 50;
+const int jumpHeight = 120;
+const int obstacleWidth = 20;
+const int powerUpWidth = 20;
+const int powerUpHeight = 20;
+const int groundHeight = 200;
+const int minObstacleHeight = 20;
+const int maxObstacleHeight = 100;
 
-void draw() {
-    system("cls");
-    cout << "Level: " << level << endl;
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            if (x == 0 && y == playerPos) {
-                cout << playerChar;
-            } else if (obstaclePos[x] == y) {
-                cout << obstacleChar;
-            } else {
-                cout << emptyChar;
-            }
-        }
-        cout << endl;
+enum PowerUpType { NONE, HIGH_JUMP, LONG_JUMP, INVINCIBLE };
+enum GameState { MENU, PLAYING, GAME_OVER };
+
+SDL_Window* window = nullptr;
+SDL_Renderer* renderer = nullptr;
+SDL_Rect playerRect = { playerPosX, playerPosY, playerWidth, playerHeight };
+vector<SDL_Rect> obstacleRects;
+vector<SDL_Rect> powerUpRects;
+vector<PowerUpType> powerUpTypes;
+bool isJumping = false;
+bool isFalling = false;
+bool gameOver = false;
+int jumpSpeed = 8;
+int fallSpeed = 8;
+PowerUpType currentPowerUp = NONE;
+int powerUpDuration = 0;
+GameState gameState = MENU;
+int selectedMenuOption = 0;
+
+void initSDL() {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        cerr << "SDL could not initialize! SDL Error: " << SDL_GetError() << endl;
+        exit(1);
+    }
+    window = SDL_CreateWindow("Conqueror's Journey", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_SHOWN);
+    if (window == nullptr) {
+        cerr << "Window could not be created! SDL Error: " << SDL_GetError() << endl;
+        exit(1);
+    }
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (renderer == nullptr) {
+        cerr << "Renderer could not be created! SDL Error: " << SDL_GetError() << endl;
+        exit(1);
     }
 }
 
-void update() {
-    for (int x = 0; x < width - 1; x++) {
-        obstaclePos[x] = obstaclePos[x + 1];
-    }
-    // Generate new obstacle
-    if (rand() % (3 - level / 3) == 0) {
-        obstaclePos[width - 1] = rand() % height;
+void closeSDL() {
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+}
+
+void drawMenu() {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Color textColor = { 255, 255, 255 };
+    SDL_Surface* textSurface = SDL_CreateRGBSurface(0, 200, 100, 32, 0, 0, 0, 0);
+    SDL_FillRect(textSurface, nullptr, SDL_MapRGB(textSurface->format, 255, 255, 255));
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_FreeSurface(textSurface);
+
+    SDL_Rect startGameRect = { width / 2 - 100, height / 2 - 50, 200, 50 };
+    SDL_Rect exitGameRect = { width / 2 - 100, height / 2 + 10, 200, 50 };
+
+    if (selectedMenuOption == 0) {
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_RenderFillRect(renderer, &startGameRect);
     } else {
-        obstaclePos[width - 1] = -1;
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(renderer, &startGameRect);
+    }
+
+    if (selectedMenuOption == 1) {
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_RenderFillRect(renderer, &exitGameRect);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(renderer, &exitGameRect);
+    }
+
+    SDL_RenderCopy(renderer, textTexture, NULL, &startGameRect);
+    SDL_RenderCopy(renderer, textTexture, NULL, &exitGameRect);
+    SDL_DestroyTexture(textTexture);
+
+    SDL_RenderPresent(renderer);
+}
+
+void draw() {
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_Rect groundRect = { 0, height - groundHeight, width, groundHeight };
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    SDL_RenderFillRect(renderer, &groundRect);
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+    SDL_RenderFillRect(renderer, &playerRect);
+
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    for (const auto& rect : obstacleRects) {
+        SDL_RenderFillRect(renderer, &rect);
+    }
+
+    for (int i = 0; i < (int)powerUpRects.size(); i++) {
+        switch (powerUpTypes[i]) {
+            case HIGH_JUMP:
+                SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Yellow for HIGH_JUMP
+                break;
+            case LONG_JUMP:
+                SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); // Cyan for LONG_JUMP
+                break;
+            case INVINCIBLE:
+                SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255); // Magenta for INVINCIBLE
+                break;
+            default:
+                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White for unknown (should not happen)
+                break;
+        }
+        SDL_RenderFillRect(renderer, &powerUpRects[i]);
+    }
+
+    if (gameOver) {
+        SDL_Color textColor = { 255, 0, 0 };
+        SDL_Surface* textSurface = SDL_CreateRGBSurface(0, 200, 100, 32, 0, 0, 0, 0);
+        SDL_FillRect(textSurface, nullptr, SDL_MapRGB(textSurface->format, 255, 0, 0));
+        SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_FreeSurface(textSurface);
+        SDL_Rect textRect = { width / 2 - 100, height / 2 - 50, 200, 100 };
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_DestroyTexture(textTexture);
+    }
+
+    SDL_RenderPresent(renderer);
+}
+
+void update() {
+    if (gameOver) {
+        return;
+    }
+
+    for (auto& rect : obstacleRects) {
+        rect.x -= 5;
+    }
+
+    if (!obstacleRects.empty() && obstacleRects[0].x + obstacleWidth < 0) {
+        obstacleRects.erase(obstacleRects.begin());
+    }
+
+    // Generate new obstacle
+    if (rand() % 300 < 5) { 
+        int obstacleHeight = minObstacleHeight + rand() % (maxObstacleHeight - minObstacleHeight + 1);
+        obstacleRects.push_back({ width, height - groundHeight - obstacleHeight, obstacleWidth, obstacleHeight });
+    }
+
+    for (auto& rect : powerUpRects) {
+        rect.x -= 5;
+    }
+
+    if (!powerUpRects.empty() && powerUpRects[0].x + powerUpWidth < 0) {
+        powerUpRects.erase(powerUpRects.begin());
+        powerUpTypes.erase(powerUpTypes.begin());
+    }
+
+    // Generate new power-up
+    if (rand() % 1000 < 5) { 
+        powerUpRects.push_back({ width, height - groundHeight - powerUpHeight, powerUpWidth, powerUpHeight });
+        PowerUpType type = static_cast<PowerUpType>(rand() % 3 + 1); 
+        powerUpTypes.push_back(type);
+    }
+
+    if (isJumping) {
+        playerRect.y -= jumpSpeed;
+        if (playerRect.y <= playerPosY - jumpHeight) {
+            isJumping = false;
+            isFalling = true;
+        }
+    }
+
+    if (isFalling) {
+        playerRect.y += fallSpeed;
+        for (const auto& rect : obstacleRects) {
+            if (SDL_HasIntersection(&playerRect, &rect)) {
+                isFalling = false;
+                playerRect.y = rect.y - playerHeight;
+                break;
+            }
+        }
+        if (isFalling && playerRect.y >= playerPosY) {
+            playerRect.y = playerPosY;
+            isFalling = false;
+        }
+    }
+
+    if (currentPowerUp != NONE) {
+        powerUpDuration--;
+        if (powerUpDuration <= 0) {
+            currentPowerUp = NONE;
+        }
     }
 }
 
 bool checkCollision() {
-    if (obstaclePos[0] == playerPos) {
-        return true;
+    for (const auto& rect : obstacleRects) {
+        if (SDL_HasIntersection(&playerRect, &rect) && currentPowerUp != INVINCIBLE) {
+            return true;
+        }
     }
     return false;
 }
 
-void nextLevel() {
-    level++;
-    obstacleSpeed -= 20;
-    if (obstacleSpeed < 50) {
-        obstacleSpeed = 50;
-    }
-    playerPos = height / 2;
-    obstaclePos = vector<int>(width, -1);
-    cout << "Next Level: " << level << "!" << endl;
-    this_thread::sleep_for(chrono::milliseconds(1000));
-}
-
-void displayLevelMenu() {
-    system("cls");
-    cout << "Select Level (1-5): " << endl;
-    for (int i = 1; i <= 5; i++) {
-        if (i == selectedLevel) {
-            cout << "> Level " << i << endl;
-        } else {
-            cout << "  Level " << i << endl;
+bool checkPowerUpCollection() {
+    for (size_t i = 0; i < powerUpRects.size(); i++) {
+        if (SDL_HasIntersection(&playerRect, &powerUpRects[i])) {
+            currentPowerUp = powerUpTypes[i];
+            powerUpDuration = 300; 
+            powerUpRects.erase(powerUpRects.begin() + i);
+            powerUpTypes.erase(powerUpTypes.begin() + i);
+            return true;
         }
     }
+    return false;
 }
 
-void displayMainMenu() {
-    system("cls");
-    cout << "Main Menu: " << endl;
-    cout << (selectedMainMenuOption == 1 ? "> Start Game" : "  Start Game") << endl;
-    cout << (selectedMainMenuOption == 2 ? "> Exit" : "  Exit") << endl;
-}
+int main(int argc, char* args[]) {
+    srand(static_cast<unsigned int>(time(0)));
+    initSDL();
 
-int main() {
-    // Menu chính
-    while (true) {
-        displayMainMenu();
-        if (_kbhit()) {
-            char ch = _getch();
-            if (ch == 'w' && selectedMainMenuOption > 1) {
-                selectedMainMenuOption--;
-            } else if (ch == 's' && selectedMainMenuOption < 2) {
-                selectedMainMenuOption++;
-            } else if (ch == '\r') { 
-                if (selectedMainMenuOption == 1) {
-                    break;
-                } else if (selectedMainMenuOption == 2) {
-                    return 0;
+    bool quit = false;
+    SDL_Event e;
+
+    while (!quit) {
+        while (SDL_PollEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+            } else if (e.type == SDL_KEYDOWN) {
+                if (gameState == MENU) {
+                    switch (e.key.keysym.sym) {
+                        case SDLK_UP:
+                            selectedMenuOption = (selectedMenuOption - 1 + 2) % 2;
+                            break;
+                        case SDLK_DOWN:
+                            selectedMenuOption = (selectedMenuOption + 1) % 2;
+                            break;
+                        case SDLK_RETURN:
+                            if (selectedMenuOption == 0) {
+                                gameState = PLAYING;
+                            } else {
+                                quit = true;
+                            }
+                            break;
+                    }
+                } else if (gameState == PLAYING) {
+                    switch (e.key.keysym.sym) {
+                        case SDLK_UP:
+                            if (!isJumping && !isFalling) {
+                                isJumping = true;
+                            }
+                            break;
+                    }
                 }
             }
         }
+
+        if (gameState == MENU) {
+            drawMenu();
+        } else if (gameState == PLAYING) {
+            update();
+            if (checkCollision()) {
+                gameOver = true;
+                gameState = GAME_OVER;
+            }
+            checkPowerUpCollection();
+            draw();
+        }
+
+        this_thread::sleep_for(chrono::milliseconds(16));
     }
 
-    // Menu chọn màn chơi
-    while (true) {
-        displayLevelMenu();
-        if (_kbhit()) {
-            char ch = _getch();
-            if (ch == 'w' && selectedLevel > 1) {
-                selectedLevel--;
-            } else if (ch == 's' && selectedLevel < 5) {
-                selectedLevel++;
-            } else if (ch == '\r') {
-                level = selectedLevel;
-                obstacleSpeed = 200 - (level - 1) * 20;
-                break;
-            }
-        }
-    }
-
-    while (true) {
-        if (_kbhit()) {
-            char ch = _getch();
-            if (ch == 'w' && playerPos > 0) {
-                playerPos--;
-            } else if (ch == 's' && playerPos < height - 1) {
-                playerPos++;
-            }
-        }
-        update();
-        draw();
-        if (checkCollision()) {
-            cout << "Game Over!" << endl;
-            break;
-        }
-        this_thread::sleep_for(chrono::milliseconds(obstacleSpeed));
-        if (rand() % 10 == 0) {
-            nextLevel();
-        }
-    }
+    closeSDL();
     return 0;
 }
