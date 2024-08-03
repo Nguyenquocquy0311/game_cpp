@@ -7,7 +7,7 @@
 
 using namespace std;
 
-const int width = 800;
+const int width = 1200;
 const int height = 600;
 const int playerWidth = 20;
 const int playerHeight = 40;
@@ -29,6 +29,7 @@ SDL_Renderer* renderer = nullptr;
 SDL_Rect playerRect = { playerPosX, playerPosY, playerWidth, playerHeight };
 vector<SDL_Rect> obstacleRects;
 vector<SDL_Rect> powerUpRects;
+vector<SDL_Rect> enemyRects;
 vector<PowerUpType> powerUpTypes;
 bool isJumping = false;
 bool isFalling = false;
@@ -104,17 +105,19 @@ void draw() {
     SDL_RenderClear(renderer);
 
     SDL_Rect groundRect = { 0, height - groundHeight, width, groundHeight };
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    SDL_SetRenderDrawColor(renderer, 0, 355, 0, 255);
     SDL_RenderFillRect(renderer, &groundRect);
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
     SDL_RenderFillRect(renderer, &playerRect);
 
+    // Draw static obstacles
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     for (const auto& rect : obstacleRects) {
         SDL_RenderFillRect(renderer, &rect);
     }
 
+    // Draw power-ups
     for (int i = 0; i < (int)powerUpRects.size(); i++) {
         switch (powerUpTypes[i]) {
             case HIGH_JUMP:
@@ -131,6 +134,12 @@ void draw() {
                 break;
         }
         SDL_RenderFillRect(renderer, &powerUpRects[i]);
+    }
+
+    // Draw moving enemies
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    for (const auto& rect : enemyRects) {
+        SDL_RenderFillRect(renderer, &rect);
     }
 
     if (gameOver) {
@@ -161,7 +170,7 @@ void update() {
     }
 
     // Generate new obstacle
-    if (rand() % 300 < 5) { 
+    if (rand() % 300 < 5) {
         int obstacleHeight = minObstacleHeight + rand() % (maxObstacleHeight - minObstacleHeight + 1);
         obstacleRects.push_back({ width, height - groundHeight - obstacleHeight, obstacleWidth, obstacleHeight });
     }
@@ -176,10 +185,25 @@ void update() {
     }
 
     // Generate new power-up
-    if (rand() % 1000 < 5) { 
+    if (rand() % 1000 < 5) {
         powerUpRects.push_back({ width, height - groundHeight - powerUpHeight, powerUpWidth, powerUpHeight });
-        PowerUpType type = static_cast<PowerUpType>(rand() % 3 + 1); 
+        PowerUpType type = static_cast<PowerUpType>(rand() % 3 + 1);
         powerUpTypes.push_back(type);
+    }
+
+    for (auto& rect : enemyRects) {
+        rect.x -= 3; // Move enemies slower than obstacles
+    }
+
+    // Remove off-screen enemies
+    if (!enemyRects.empty() && enemyRects[0].x + obstacleWidth < 0) {
+        enemyRects.erase(enemyRects.begin());
+    }
+
+    // Generate new enemy
+    if (rand() % 500 < 5) {
+        int enemyHeight = minObstacleHeight + rand() % (maxObstacleHeight - minObstacleHeight + 1);
+        enemyRects.push_back({ width, height - groundHeight - enemyHeight, obstacleWidth, enemyHeight });
     }
 
     if (isJumping) {
@@ -219,6 +243,11 @@ bool checkCollision() {
             return true;
         }
     }
+    for (const auto& rect : enemyRects) {
+        if (SDL_HasIntersection(&playerRect, &rect) && currentPowerUp != INVINCIBLE) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -226,7 +255,7 @@ bool checkPowerUpCollection() {
     for (size_t i = 0; i < powerUpRects.size(); i++) {
         if (SDL_HasIntersection(&playerRect, &powerUpRects[i])) {
             currentPowerUp = powerUpTypes[i];
-            powerUpDuration = 300; 
+            powerUpDuration = 300;
             powerUpRects.erase(powerUpRects.begin() + i);
             powerUpTypes.erase(powerUpTypes.begin() + i);
             return true;
