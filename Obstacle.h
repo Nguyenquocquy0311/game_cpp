@@ -5,12 +5,13 @@
 
 class Obstacle {
 public:
-    SDL_Rect rect;
-
     Obstacle(int x, int y, int width, int height);
-
     void update();
-    bool isOffScreen();
+    void draw(SDL_Renderer* renderer) const;
+    SDL_Rect getRect() const;
+
+private:
+    SDL_Rect obstacleRect;
 };
 
-#endif
+#endif // OBSTACLE_H

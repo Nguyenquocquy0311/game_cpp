@@ -5,13 +5,15 @@
 
 class Enemy {
 public:
-    Enemy(SDL_Rect rect);
-    SDL_Rect getRect();
+    Enemy(int x, int y, int width, int height, int direction);
     void update();
-    void render(SDL_Renderer* renderer);
+    void draw(SDL_Renderer* renderer) const;
+    SDL_Rect getRect() const;
 
 private:
-    SDL_Rect rect;
+    SDL_Rect enemyRect;
+    int direction; // 0: trái -> phải, 1: phải -> trái, 2: trên -> dưới, 3: dưới -> trên
+    int speed;
 };
 
-#endif
+#endif // ENEMY_H

@@ -1,14 +1,18 @@
 #include "Bullet.h"
 
-Bullet::Bullet(int x, int y, int width, int height, int speed)
-    : speed(speed) {
-    rect = { x, y, width, height };
+Bullet::Bullet() : speed(20) {
+    rect = { 0, 0, 10, 5 };
 }
 
 void Bullet::update() {
     rect.x += speed;
 }
 
-bool Bullet::isOffScreen(int screenWidth) {
-    return rect.x > screenWidth;
+void Bullet::draw(SDL_Renderer* renderer) const {
+    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+    SDL_RenderFillRect(renderer, &rect);
+}
+
+SDL_Rect Bullet::getRect() const {
+    return rect;
 }

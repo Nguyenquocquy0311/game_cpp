@@ -2,55 +2,62 @@
 #define GAME_H
 
 #include <SDL.h>
-#include <SDL_image.h>
-#include <iostream>
+#include <SDL_mixer.h>
 #include <vector>
-#include <cstdlib>
-#include <chrono>
-#include <thread>
+#include "Player.h"
+#include "Bullet.h"
+#include "Obstacle.h"
+#include "PowerUp.h"
+#include "Enemy.h"
+
+enum GameState { MENU, PLAYING, GAME_OVER };
 
 class Game {
 public:
     Game();
     ~Game();
+
     void run();
+
 private:
     void initSDL();
     void closeSDL();
-    void loadTextures();
-    void drawMenu();
-    void draw();
+    void handleEvents();
     void update();
-    void generateObstacles();
-    void generateEnemies();
-    void generatePowerUps();
+    void draw();
+    void drawMenu(bool isGameOverMenu = false);
+    void resetGame();
+    void handleMenuInput(SDL_Keycode key);
     bool checkCollision();
     bool checkPowerUpCollection();
 
-    enum PowerUpType { NONE, HIGH_JUMP, LONG_JUMP, INVINCIBLE };
-    enum GameState { MENU, PLAYING, GAME_OVER };
-
     SDL_Window* window;
     SDL_Renderer* renderer;
-    SDL_Texture* playerTexture;
-    SDL_Texture* invincibleTexture;
-    SDL_Texture* highJumpTexture;
-    SDL_Texture* longJumpTexture;
-    SDL_Texture* backgroundTexture;
-    SDL_Rect playerRect;
-    std::vector<SDL_Rect> obstacleRects;
-    std::vector<SDL_Rect> powerUpRects;
-    std::vector<SDL_Rect> enemyRects;
-    std::vector<PowerUpType> powerUpTypes;
-    bool isJumping;
-    bool isFalling;
-    bool gameOver;
-    int jumpSpeed;
-    int fallSpeed;
-    PowerUpType currentPowerUp;
-    int powerUpDuration;
+    int width;
+    int height;
     GameState gameState;
     int selectedMenuOption;
+    int selectedGameOverOption;
+    Mix_Chunk* jumpSound;
+    bool quit;
+
+    Player player;
+    std::vector<Obstacle> obstacles;
+    std::vector<PowerUp> powerUps;
+    std::vector<Enemy> enemies;
+    std::vector<Bullet> bullets;
+
+    bool gameOver;
+    PowerUpType currentPowerUp;
+    int powerUpDuration;
+
+    const int minObstacleHeight = 20;
+    const int maxObstacleHeight = 100;
+    const int obstacleWidth = 20;
+    const int powerUpWidth = 20;
+    const int powerUpHeight = 20;
+    const int groundHeight = 200;
+
 };
 
-#endif
+#endif // GAME_H

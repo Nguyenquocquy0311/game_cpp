@@ -1,13 +1,18 @@
 #include "Obstacle.h"
 
 Obstacle::Obstacle(int x, int y, int width, int height) {
-    rect = { x, y, width, height };
+    obstacleRect = { x, y, width, height };
 }
 
 void Obstacle::update() {
-    rect.x -= 5;
+    obstacleRect.x -= 5;
 }
 
-bool Obstacle::isOffScreen() {
-    return rect.x + rect.w < 0;
+void Obstacle::draw(SDL_Renderer* renderer) const {
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_RenderFillRect(renderer, &obstacleRect);
+}
+
+SDL_Rect Obstacle::getRect() const {
+    return obstacleRect;
 }

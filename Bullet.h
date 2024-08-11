@@ -5,13 +5,14 @@
 
 class Bullet {
 public:
+    Bullet();
+    void update();
+    void draw(SDL_Renderer* renderer) const;
+    SDL_Rect getRect() const;
+
     SDL_Rect rect;
     int speed;
-
-    Bullet(int x, int y, int width, int height, int speed);
-
-    void update();
-    bool isOffScreen(int screenWidth);
 };
 
-#endif
+
+#endif // BULLET_H

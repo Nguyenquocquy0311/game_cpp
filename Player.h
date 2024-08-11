@@ -3,14 +3,18 @@
 
 #include <SDL.h>
 #include <vector>
+#include "Bullet.h"
 
 class Player {
 public:
-    Player();
-    SDL_Rect getRect();
-    void handleEvent(SDL_Event& e);
-    void update(const std::vector<SDL_Rect>& obstacleRects);
-    void render(SDL_Renderer* renderer);
+    Player(int screenWidth, int screenHeight);
+    void handleInput(SDL_Keycode key, std::vector<Bullet>& bullets);
+    void update();
+    void draw(SDL_Renderer* renderer);
+    void reset();
+    SDL_Rect getRect() const;
+    void setJumpHeight(int height);
+    void setJumpSpeed(int speed);
 
 private:
     SDL_Rect playerRect;
@@ -18,9 +22,10 @@ private:
     bool isFalling;
     int jumpSpeed;
     int fallSpeed;
-    int jumpHeight;
-    int playerPosY;
-    int moveSpeed;
+    int currentJumpHeight;
+    int playerSpeed;
+    int width;
+    int height;
 };
 
-#endif
+#endif // PLAYER_H
