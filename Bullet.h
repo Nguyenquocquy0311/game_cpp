@@ -2,15 +2,16 @@
 #define BULLET_H
 
 #include <SDL.h>
+#include <SDL_image.h>
 
 class Bullet {
 public:
     Bullet();
     void update();
-    void draw(SDL_Renderer* renderer) const;
+    void draw(SDL_Renderer* renderer, SDL_Texture* texture);
     SDL_Rect getRect() const;
 
-    SDL_Rect rect;
+    SDL_Rect bulletRect;
     int speed;
 };
 

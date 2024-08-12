@@ -1,18 +1,17 @@
 #include "Bullet.h"
 
-Bullet::Bullet() : speed(20) {
-    rect = { 0, 0, 10, 5 };
+Bullet::Bullet() : speed(50) {
+    bulletRect = { 0, 0, 50, 50 };
 }
 
 void Bullet::update() {
-    rect.x += speed;
+    bulletRect.x += speed;
 }
 
-void Bullet::draw(SDL_Renderer* renderer) const {
-    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-    SDL_RenderFillRect(renderer, &rect);
+void Bullet::draw(SDL_Renderer* renderer, SDL_Texture* texture) {
+    SDL_RenderCopy(renderer, texture, nullptr, &bulletRect);
 }
 
 SDL_Rect Bullet::getRect() const {
-    return rect;
+    return bulletRect;
 }

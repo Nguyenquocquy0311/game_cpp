@@ -7,7 +7,7 @@ class Obstacle {
 public:
     Obstacle(int x, int y, int width, int height);
     void update();
-    void draw(SDL_Renderer* renderer) const;
+    void draw(SDL_Renderer* renderer, SDL_Texture* texture);
     SDL_Rect getRect() const;
 
 private:

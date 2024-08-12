@@ -8,9 +8,8 @@ void Obstacle::update() {
     obstacleRect.x -= 5;
 }
 
-void Obstacle::draw(SDL_Renderer* renderer) const {
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_RenderFillRect(renderer, &obstacleRect);
+void Obstacle::draw(SDL_Renderer* renderer, SDL_Texture* texture) {
+    SDL_RenderCopy(renderer, texture, nullptr, &obstacleRect);
 }
 
 SDL_Rect Obstacle::getRect() const {
