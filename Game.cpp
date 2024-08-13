@@ -7,6 +7,7 @@
 #include <thread>
 #include <cstdlib>
 #include <algorithm>
+#include <cmath>
 
 using namespace std;
 
@@ -19,7 +20,7 @@ Mix_Chunk* gShootSound = nullptr;
 
 Game::Game() : width(1200), height(700), window(nullptr), renderer(nullptr), gameState(MENU), selectedMenuOption(0),
                selectedGameOverOption(0), quit(false), gameOver(false), currentPowerUp(NONE), powerUpDuration(0), player(width, height),
-               bgX(0), bgSpeed(3) {
+               bgX(0), bgSpeed(2) {
     initSDL();
 }
 
@@ -79,11 +80,6 @@ void Game::initSDL() {
         cerr << "Player image loaded successfully!" << endl;
     }
 
-    playerRect.x = 100;
-    playerRect.y = height - 80 - playerRect.h;
-    playerRect.w = 100;
-    playerRect.h = 100;
-
     gBulletTexture = loadTexture("asset/img/bullet1.png");
     if (gBulletTexture == nullptr) {
         cerr << "Failed to load bullet image! SDL Error: " << SDL_GetError() << endl;
@@ -96,9 +92,27 @@ void Game::initSDL() {
     if (gObstacleTexture == nullptr) {
         cerr << "Failed to load obstacle image! SDL Error: " << SDL_GetError() << endl;
         exit(1);
+    } else {
+        cerr << "Obstacle image loaded successfully!" << endl;
     }
 
-    gBackgroundTexture = loadTexture("asset/img/bg.jpg");
+    gEnemyRunTexture = loadTexture("asset/img/enemy-run-2.png");
+    if (gEnemyRunTexture == nullptr) {
+        cerr << "Failed to load enemy image! SDL Error: " << SDL_GetError() << endl;
+        exit(1);
+    } else {
+        cerr << "Enemy image loaded successfully!" << endl;
+    }
+
+    gEnemyFlyTexture = loadTexture("asset/img/enemy-fly-2.png");
+    if (gEnemyFlyTexture == nullptr) {
+        cerr << "Failed to load enemy image! SDL Error: " << SDL_GetError() << endl;
+        exit(1);
+    } else {
+        cerr << "Enemy image loaded successfully!" << endl;
+    }
+
+    gBackgroundTexture = loadTexture("asset/img/bg-1.jpg");
     if (gBackgroundTexture == nullptr) {
         std::cerr << "Failed to load background image! SDL Error: " << SDL_GetError() << std::endl;
         exit(1);
@@ -165,6 +179,12 @@ void Game::closeSDL() {
     SDL_DestroyTexture(gObstacleTexture);
     gObstacleTexture = nullptr;
 
+    SDL_DestroyTexture(gEnemyRunTexture);
+    gEnemyRunTexture = nullptr;
+
+    SDL_DestroyTexture(gEnemyFlyTexture);
+    gEnemyFlyTexture = nullptr;
+
     SDL_DestroyTexture(powerUpHighJumpTexture);
     powerUpHighJumpTexture = nullptr;
 
@@ -202,7 +222,7 @@ void Game::run() {
             }
             drawMenu();
         } else if (gameState == PLAYING) {
-            if (Mix_PlayingMusic() != 0) {  // Dừng nhạc nền khi vào game
+            if (Mix_PlayingMusic() != 0) {
                 Mix_HaltMusic();
             }
             update();
@@ -213,13 +233,14 @@ void Game::run() {
             checkPowerUpCollection();
             draw();
         } else if (gameState == GAME_OVER) {
-            if (Mix_PlayingMusic() == 0) {  // Phát lại nhạc nếu quay lại menu
+            if (Mix_PlayingMusic() == 0) {
                 if (Mix_PlayMusic(gBackgroundMusic, -1) == -1) {
                     std::cerr << "Failed to play menu music! SDL_mixer Error: " << Mix_GetError() << std::endl;
                     exit(1);
                 }
             }
             drawMenu(true);
+            resetGame();
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
@@ -240,6 +261,13 @@ void Game::handleEvents() {
     }
 }
 
+bool isFarEnough(const SDL_Rect& rect1, const SDL_Rect& rect2, int minDistance) {
+    int dx = rect1.x - rect2.x;
+    int dy = rect1.y - rect2.y;
+    int distance = sqrt(dx * dx + dy * dy);
+    return distance > minDistance;
+}
+
 void Game::update() {
     if (gameOver) {
         return;
@@ -251,7 +279,10 @@ void Game::update() {
     }
 
     player.update();
+    //SDL_Rect adjustedPlayerRect = player.getRect();
+    //adjustedPlayerRect.y -= 50;
 
+    // Kiểm tra va chạm giữa viên đạn và quái vật
     for (size_t i = 0; i < bullets.size(); ++i) {
         for (size_t j = 0; j < enemies.size(); ++j) {
             SDL_Rect bulletRect = bullets[i].getRect();
@@ -265,6 +296,7 @@ void Game::update() {
         }
     }
 
+    // Kiểm tra va chạm giữa viên đạn và chướng ngại vật
     for (size_t i = 0; i < bullets.size(); ++i) {
         for (size_t j = 0; j < obstacles.size(); ++j) {
             SDL_Rect bulletRect = bullets[i].getRect();
@@ -277,15 +309,18 @@ void Game::update() {
         }
     }
 
+    // Cập nhật vị trí của quái vật
     for (auto& enemy : enemies) {
         enemy.update();
     }
 
+    // Xóa các quái vật ra khỏi màn hình
     enemies.erase(remove_if(enemies.begin(), enemies.end(), [](const Enemy& enemy) {
         SDL_Rect rect = enemy.getRect();
-        return rect.x < 0 || rect.x > 1200 || rect.y < 0 || rect.y > 300;
+        return rect.x < -rect.w || rect.x > 1200 + rect.w || rect.y < -rect.h || rect.y > 700 + rect.h;
     }), enemies.end());
 
+    // Cập nhật vị trí của các chướng ngại vật và vật phẩm
     for (auto& obstacle : obstacles) {
         obstacle.update();
     }
@@ -294,21 +329,67 @@ void Game::update() {
         powerUp.update();
     }
 
-    if (rand() % 500 < 5) {
-        int x = (rand() % 2 == 0) ? 0 : 1200 - 20;
-        int y = height - 140;
-        int width = 20;
-        int height = 40;
-        int direction = rand() % 4;
-        enemies.push_back(Enemy(x, y, width, height, direction));
+    if (rand() % 100 < 2) {  // Xác suất xuất hiện quái vật
+        int side = rand() % 4; // Chọn ngẫu nhiên cạnh màn hình để xuất hiện quái vật
+        int x, y, direction;
+        int width = 50;
+        int height = 50;
+        SDL_Texture* enemyTexture;
+
+        switch (side) {
+            case 0: // Từ cạnh trái
+                x = -width;
+                y = rand() % (height - 100) + 100;
+                direction = 1;  // Di chuyển sang phải
+                break;
+            case 1: // Từ cạnh phải
+                x = 1200;
+                y = rand() % (height - 100) + 100;
+                direction = 0;  // Di chuyển sang trái
+                break;
+            case 2: // Từ cạnh trên
+                x = rand() % 1200; // Phạm vi chiều ngang
+                y = -height;
+                direction = 2;  // Di chuyển xuống
+                break;
+            case 3:
+                x = rand() % 1200;
+                y = 700 - height;
+                direction = 3;
+                break;
+        }
+
+        SDL_Rect newEnemyRect = {x, y, width, height};
+        bool canPlaceEnemy = true;
+        int minDistance = 100;  // Khoảng cách tối thiểu giữa các quái vật
+
+        for (const auto& enemy : enemies) {
+            if (!isFarEnough(newEnemyRect, enemy.getRect(), minDistance)) {
+                canPlaceEnemy = false;
+                break;
+            }
+        }
+
+        if (canPlaceEnemy) {
+            if (y == groundHeight) {
+                enemyTexture = gEnemyRunTexture;
+            } else {
+                enemyTexture = gEnemyFlyTexture;
+            }
+
+            enemies.push_back(Enemy(x, y, width, height, direction));
+            enemies.back().setTexture(enemyTexture);  // Gán texture tương ứng cho quái vật
+        }
     }
 
-    if (rand() % 300 < 5) {
+    if (rand() % 300 < 0) {
         int obstacleHeight = minObstacleHeight + rand() % (maxObstacleHeight - minObstacleHeight + 1);
         obstacles.push_back(Obstacle(width, height - groundHeight - obstacleHeight, obstacleWidth, obstacleHeight));
     }
 
-    if (rand() % 1000 < 10) {
+    if (rand() % 1000 < 0) {
+        int x = player.getRect().x + rand() % (width - player.getRect().x);
+        int y = height - groundHeight - powerUpHeight;
         PowerUp powerUp(rand() % width, height - groundHeight - powerUpHeight, powerUpWidth, powerUpHeight, static_cast<PowerUpType>(rand() % 3 + 1));
         powerUp.loadTextures(renderer, "asset/img/power-up-1.png", "asset/img/power-up-2.jfif", "asset/img/power-up-3.png");
         powerUps.push_back(powerUp);
@@ -332,7 +413,7 @@ void Game::update() {
         powerUpDuration--;
         if (powerUpDuration == 0) {
             if (currentPowerUp == HIGH_JUMP) {
-                player.setJumpHeight(120);
+                player.setJumpHeight(280);
             }
             currentPowerUp = NONE;
         }
@@ -343,17 +424,20 @@ void Game::draw() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 300, 255);
     SDL_RenderClear(renderer);
 
-    SDL_Rect bgRect = { 0, 0, width, height };
-    SDL_RenderCopy(renderer, gBackgroundTexture, nullptr, &bgRect);
-
     SDL_Rect bgRect1 = { bgX, 0, width, height };
-    SDL_Rect bgRect2 = { bgX + width - 20, 0, width, height };
+    SDL_Rect bgRect2 = { bgX + width, 0, width, height };
+
     SDL_RenderCopy(renderer, gBackgroundTexture, nullptr, &bgRect1);
     SDL_RenderCopy(renderer, gBackgroundTexture, nullptr, &bgRect2);
 
+    bgX -= bgSpeed;
+    if (bgX <= -width) {
+        bgX = 0;
+    }
+
     player.draw(renderer, gPlayerTexture);
 
-    for (const auto& enemy : enemies) {
+    for (auto& enemy : enemies) {
         enemy.draw(renderer);
     }
 
@@ -408,8 +492,6 @@ void Game::resetGame() {
         int width = 20;
         int height = 40;
         int direction = rand() % 4;
-        //EnemyType type = (rand() % 2 == 0) ? FLYING : RUNNING;
-        //enemies.push_back(Enemy(x, y, width, height, direction, type));
         enemies.push_back(Enemy(x, y, width, height, direction));
     }
 }
@@ -441,18 +523,44 @@ bool Game::checkCollision() {
     }
 
     SDL_Rect playerRect = player.getRect();
+
+    SDL_Rect adjustedPlayerRect = {
+        playerRect.x + 10,
+        playerRect.y + 10,
+        playerRect.w - 20,
+        playerRect.h - 20
+    };
+
     for (const auto& obstacle : obstacles) {
-        SDL_Rect obstacleRect = obstacle.getRect(); // Tạo biến tạm thời
-        if (SDL_HasIntersection(&playerRect, &obstacleRect)) {
+        SDL_Rect obstacleRect = obstacle.getRect();
+
+        SDL_Rect adjustedObstacleRect = {
+            obstacleRect.x + 5,
+            obstacleRect.y + 5,
+            obstacleRect.w - 10,
+            obstacleRect.h - 10
+        };
+
+        if (SDL_HasIntersection(&adjustedPlayerRect, &adjustedObstacleRect)) {
             return true;
         }
     }
+
     for (const auto& enemy : enemies) {
-        SDL_Rect enemyRect = enemy.getRect(); // Tạo biến tạm thời
-        if (SDL_HasIntersection(&playerRect, &enemyRect)) {
+        SDL_Rect enemyRect = enemy.getRect();
+
+        SDL_Rect adjustedEnemyRect = {
+            enemyRect.x + 5,
+            enemyRect.y + 5,
+            enemyRect.w - 10,
+            enemyRect.h - 10
+        };
+
+        if (SDL_HasIntersection(&adjustedPlayerRect, &adjustedEnemyRect)) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -460,20 +568,20 @@ bool Game::checkCollision() {
 bool Game::checkPowerUpCollection() {
     SDL_Rect playerRect = player.getRect();
     for (size_t i = 0; i < powerUps.size(); i++) {
-        SDL_Rect powerUpRect = powerUps[i].getRect(); // Tạo biến tạm thời
+        SDL_Rect powerUpRect = powerUps[i].getRect();
         if (SDL_HasIntersection(&playerRect, &powerUpRect)) {
             currentPowerUp = powerUps[i].getType();
 
             if (currentPowerUp == INVINCIBLE) {
-                powerUpDuration = 600;  // 10 giây cho bất tử
+                powerUpDuration = 600;
             } else if (currentPowerUp == HIGH_JUMP) {
-                powerUpDuration = 300;  // 5 giây cho nhảy cao
-                player.setJumpHeight(240);  // Nhảy cao gấp đôi
+                powerUpDuration = 300;
+                player.setJumpHeight(240);
             } else if (currentPowerUp == FLY) {
-                powerUpDuration = 600;  // 10 giây cho bay
-                player.setFlying(true);  // Bật trạng thái bay
+                powerUpDuration = 600;
+                player.setFlying(true);
             } else {
-                powerUpDuration = 300;  // Thời gian cho các loại vật phẩm khác
+                powerUpDuration = 300;
             }
 
             powerUps.erase(powerUps.begin() + i);

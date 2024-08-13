@@ -4,12 +4,11 @@
 
 Player::Player(int screenWidth, int screenHeight)
     : isJumping(false), isFalling(false), isFlying(false), jumpSpeed(8), fallSpeed(8), flySpeed(5),
-      currentJumpHeight(120), playerSpeed(10), width(1200) {
-    playerRect = { 300, screenHeight - 40 - 200, 20, 40 };
+      currentJumpHeight(20), playerSpeed(10), width(1200) {
+    playerRect = { 300, screenHeight - 250, 20, 40};
     width = screenWidth;
     height = screenHeight;
 }
-
 
 void Player::handleInput(SDL_Keycode key, std::vector<Bullet>& bullets) {
     if (key == SDLK_UP && isFlying) {
@@ -28,18 +27,17 @@ void Player::handleInput(SDL_Keycode key, std::vector<Bullet>& bullets) {
 
 void Player::update() {
     if (isFlying) {
-        // Kiểm tra và giới hạn bay lên
         if (playerRect.y > 0) {
             playerRect.y -= flySpeed;
         }
-        // Giới hạn bay xuống
-        if (playerRect.y < height - 80 - playerRect.h) {
+
+        if (playerRect.y < height - 240 - playerRect.h) {
             playerRect.y += flySpeed;
         }
     } else {
         if (isJumping) {
             playerRect.y -= jumpSpeed;
-            if (playerRect.y <= height - 80 - currentJumpHeight - playerRect.h) {
+            if (playerRect.y <= height - 240 - currentJumpHeight - playerRect.h) {
                 isJumping = false;
                 isFalling = true;
             }
@@ -47,8 +45,8 @@ void Player::update() {
 
         if (isFalling) {
             playerRect.y += fallSpeed;
-            if (playerRect.y >= height - 80 - playerRect.h) {
-                playerRect.y = height - 80 - playerRect.h;
+            if (playerRect.y >= height - 250) {
+                playerRect.y = height - 250;
                 isFalling = false;
             }
         }
@@ -58,13 +56,13 @@ void Player::update() {
     if (state[SDL_SCANCODE_LEFT] && !isJumping && !isFlying) {
         playerRect.x -= playerSpeed;
         if (playerRect.x < 0) {
-            playerRect.x = 0; // Giới hạn di chuyển trái
+            playerRect.x = 0;
         }
     }
     if (state[SDL_SCANCODE_RIGHT] && !isJumping && !isFlying) {
         playerRect.x += playerSpeed;
         if (playerRect.x > width - playerRect.w) {
-            playerRect.x = width - playerRect.w; // Giới hạn di chuyển phải
+            playerRect.x = width - playerRect.w;
         }
     }
 }
@@ -75,7 +73,7 @@ void Player::draw(SDL_Renderer* renderer, SDL_Texture* texture) {
 
 
 void Player::reset() {
-    playerRect = { 100, height - 80 - 100, 100, 100 };
+    playerRect = { 100, height - 240, 100, 100 };
     isJumping = false;
     isFalling = false;
     isFlying = false;

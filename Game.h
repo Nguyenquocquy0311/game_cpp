@@ -44,6 +44,8 @@ private:
     SDL_Renderer* renderer;
     SDL_Texture* gBulletTexture;
     SDL_Texture* gObstacleTexture = nullptr;
+    SDL_Texture* gEnemyRunTexture = nullptr;
+    SDL_Texture* gEnemyFlyTexture = nullptr;
     SDL_Texture* gBackgroundTexture = nullptr;
     SDL_Surface* gScreenSurface;
     SDL_Surface* gPlayerSurface;
@@ -81,7 +83,7 @@ private:
     const int obstacleWidth = 20;
     const int powerUpWidth = 20;
     const int powerUpHeight = 20;
-    const int groundHeight = 100;
+    const int groundHeight = 180;
 
 };
 
