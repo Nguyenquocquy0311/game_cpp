@@ -347,7 +347,7 @@ void Game::draw() {
     SDL_RenderCopy(renderer, gBackgroundTexture, nullptr, &bgRect);
 
     SDL_Rect bgRect1 = { bgX, 0, width, height };
-    SDL_Rect bgRect2 = { bgX + width, 0, width, height };
+    SDL_Rect bgRect2 = { bgX + width - 20, 0, width, height };
     SDL_RenderCopy(renderer, gBackgroundTexture, nullptr, &bgRect1);
     SDL_RenderCopy(renderer, gBackgroundTexture, nullptr, &bgRect2);
 
