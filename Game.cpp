@@ -2,16 +2,17 @@
 #include "Player.h"
 #include "Enemy.h"
 
+#include <SDL_ttf.h>
+
 #include <iostream>
 #include <chrono>
 #include <thread>
 #include <cstdlib>
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 using namespace std;
-
-SDL_Texture* gPlayerTexture = nullptr;
 
 Mix_Music* gBackgroundMusic = nullptr;
 Mix_Chunk* gJumpSound = nullptr;
@@ -50,6 +51,12 @@ void Game::initSDL() {
         std::cerr << "SDL could not initialize! SDL Error: " << SDL_GetError() << std::endl;
         exit(1);
     }
+
+    if (TTF_Init() == -1) {
+        std::cerr << "SDL_ttf could not initialize! TTF_Error: " << TTF_GetError() << std::endl;
+        exit(1);
+    }
+
     window = SDL_CreateWindow("Conqueror's Journey", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_SHOWN);
     if (window == nullptr) {
         std::cerr << "Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
@@ -72,7 +79,7 @@ void Game::initSDL() {
         exit(1);
     }
 
-    gPlayerTexture = loadTexture("asset/img/person.png");
+    gPlayerTexture = loadTexture("asset/img/player.png");
     if (gPlayerTexture == nullptr) {
         cerr << "Failed to load player image! SDL Error: " << SDL_GetError() << endl;
         exit(1);
@@ -80,7 +87,7 @@ void Game::initSDL() {
         cerr << "Player image loaded successfully!" << endl;
     }
 
-    gBulletTexture = loadTexture("asset/img/bullet1.png");
+    gBulletTexture = loadTexture("asset/img/bullet2.png");
     if (gBulletTexture == nullptr) {
         cerr << "Failed to load bullet image! SDL Error: " << SDL_GetError() << endl;
         exit(1);
@@ -96,7 +103,7 @@ void Game::initSDL() {
         cerr << "Obstacle image loaded successfully!" << endl;
     }
 
-    gEnemyRunTexture = loadTexture("asset/img/enemy-run-2.png");
+    gEnemyRunTexture = loadTexture("asset/img/enemy-run-1.png");
     if (gEnemyRunTexture == nullptr) {
         cerr << "Failed to load enemy image! SDL Error: " << SDL_GetError() << endl;
         exit(1);
@@ -104,7 +111,7 @@ void Game::initSDL() {
         cerr << "Enemy image loaded successfully!" << endl;
     }
 
-    gEnemyFlyTexture = loadTexture("asset/img/enemy-fly-2.png");
+    gEnemyFlyTexture = loadTexture("asset/img/enemy-fly-1.png");
     if (gEnemyFlyTexture == nullptr) {
         cerr << "Failed to load enemy image! SDL Error: " << SDL_GetError() << endl;
         exit(1);
@@ -118,13 +125,15 @@ void Game::initSDL() {
         exit(1);
     }
 
-    powerUpHighJumpTexture = loadTexture("asset/img/power-up-1.png");
-    powerUpFlyTexture = loadTexture("asset/img/power-up-3.png");
-    powerUpInvincibleTexture = loadTexture("asset/img/power-up-2.jfif");
+    powerUpHighJumpTexture = loadTexture("asset/img/power-up2.png");
+    powerUpFlyTexture = loadTexture("asset/img/power-up1.png");
+    powerUpInvincibleTexture = loadTexture("asset/img/power-up3.png");
 
     if (!powerUpHighJumpTexture || !powerUpFlyTexture || !powerUpInvincibleTexture) {
         std::cerr << "Failed to load power-up images!" << std::endl;
         exit(1);
+    } else {
+        cerr << "Powerup image loaded successfully!" << endl;
     }
 
     gMenuBackgroundTexture = loadTexture("asset/img/menu.jpg");
@@ -204,6 +213,8 @@ void Game::closeSDL() {
     gShootSound = nullptr;
 
     Mix_CloseAudio();
+
+    TTF_Quit();
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
@@ -325,11 +336,7 @@ void Game::update() {
         obstacle.update();
     }
 
-    for (auto& powerUp : powerUps) {
-        powerUp.update();
-    }
-
-    if (rand() % 100 < 2) {  // Xác suất xuất hiện quái vật
+    if (rand() % 100 < 0) {  // Xác suất xuất hiện quái vật
         int side = rand() % 4; // Chọn ngẫu nhiên cạnh màn hình để xuất hiện quái vật
         int x, y, direction;
         int width = 50;
@@ -346,6 +353,7 @@ void Game::update() {
                 x = 1200;
                 y = rand() % (height - 100) + 100;
                 direction = 0;  // Di chuyển sang trái
+
                 break;
             case 2: // Từ cạnh trên
                 x = rand() % 1200; // Phạm vi chiều ngang
@@ -361,7 +369,7 @@ void Game::update() {
 
         SDL_Rect newEnemyRect = {x, y, width, height};
         bool canPlaceEnemy = true;
-        int minDistance = 100;  // Khoảng cách tối thiểu giữa các quái vật
+        int minDistance = 200;  // Khoảng cách tối thiểu giữa các quái vật
 
         for (const auto& enemy : enemies) {
             if (!isFarEnough(newEnemyRect, enemy.getRect(), minDistance)) {
@@ -387,12 +395,31 @@ void Game::update() {
         obstacles.push_back(Obstacle(width, height - groundHeight - obstacleHeight, obstacleWidth, obstacleHeight));
     }
 
-    if (rand() % 1000 < 0) {
-        int x = player.getRect().x + rand() % (width - player.getRect().x);
+    if (rand() % 100 < 5) {
+        int x = width;
         int y = height - groundHeight - powerUpHeight;
-        PowerUp powerUp(rand() % width, height - groundHeight - powerUpHeight, powerUpWidth, powerUpHeight, static_cast<PowerUpType>(rand() % 3 + 1));
-        powerUp.loadTextures(renderer, "asset/img/power-up-1.png", "asset/img/power-up-2.jfif", "asset/img/power-up-3.png");
-        powerUps.push_back(powerUp);
+        PowerUpType type = static_cast<PowerUpType>(rand() % 3 + 1);
+        PowerUp powerUp(x, y, powerUpWidth, powerUpHeight, type);
+        powerUp.setTexture(powerUpHighJumpTexture, powerUpFlyTexture, powerUpInvincibleTexture);
+
+        SDL_Rect newPowerupRect = {x, y, width, height};
+        bool canPlacePowerup = true;
+        int minDistance = 200;
+
+        for (const auto& powerup : powerUps) {
+            if (!isFarEnough(newPowerupRect, powerup.getRect(), minDistance)) {
+                canPlacePowerup = false;
+                break;
+            }
+        }
+
+        if (canPlacePowerup) {
+            powerUps.push_back(powerUp);
+        }
+    }
+
+    for (auto& powerUp : powerUps) {
+        powerUp.update();
     }
 
     for (auto& bullet : bullets) {
@@ -413,7 +440,9 @@ void Game::update() {
         powerUpDuration--;
         if (powerUpDuration == 0) {
             if (currentPowerUp == HIGH_JUMP) {
-                player.setJumpHeight(280);
+                player.setJumpHeight(120);
+            } else if (currentPowerUp == FLY) {
+                player.setFlying(false);
             }
             currentPowerUp = NONE;
         }
@@ -421,7 +450,7 @@ void Game::update() {
 }
 
 void Game::draw() {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 300, 255);
+    //SDL_SetRenderDrawColor(renderer, 0, 0, 300, 255);
     SDL_RenderClear(renderer);
 
     SDL_Rect bgRect1 = { bgX, 0, width, height };
@@ -457,21 +486,56 @@ void Game::draw() {
 }
 
 void Game::drawMenu(bool isGameOverMenu) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
     SDL_Rect bgRect = { 0, 0, width, height };
-    SDL_RenderCopy(renderer, gMenuBackgroundTexture, NULL, &bgRect);
+    SDL_RenderCopy(renderer, gMenuBackgroundTexture, nullptr, &bgRect);
 
-    SDL_Rect playButtonRect = { width / 2 - 150, height / 2 - 100, 300, 200 };
-    SDL_RenderCopy(renderer, gPlayButtonTexture, NULL, &playButtonRect);
+    SDL_Color normalColor = {255, 255, 255, 255};
+    SDL_Color selectedColor = {255, 0, 0, 255};
 
-    SDL_Rect exitButtonRect = { width / 2 - 150, height / 2, 300, 200 };
-    SDL_RenderCopy(renderer, gExitButtonTexture, NULL, &exitButtonRect);
+    const char* menuTitle = isGameOverMenu ? "Game Over" : "Conqueror's Journey";
+    const char* playText = isGameOverMenu ? "Try again" : "Play";
+    const char* exitText = "Exit";
+
+    TTF_Font* font = TTF_OpenFont("asset/fonts/Atop-R99O3.ttf", 36);
+    if (!font) {
+        std::cerr << "Failed to load font! TTF_Error: " << TTF_GetError() << std::endl;
+        exit(1);
+    }
+
+    SDL_Surface* titleSurface = TTF_RenderText_Solid(font, menuTitle, normalColor);
+    SDL_Texture* titleTexture = SDL_CreateTextureFromSurface(renderer, titleSurface);
+    int titleW, titleH;
+    SDL_QueryTexture(titleTexture, nullptr, nullptr, &titleW, &titleH);
+    SDL_Rect titleRect = { width / 2 - titleW / 2, height / 4 - titleH / 2, titleW, titleH };
+    SDL_RenderCopy(renderer, titleTexture, nullptr, &titleRect);
+    SDL_FreeSurface(titleSurface);
+    SDL_DestroyTexture(titleTexture);
+
+    SDL_Surface* playSurface = TTF_RenderText_Solid(font, playText, selectedMenuOption == 0 ? selectedColor : normalColor);
+    SDL_Texture* playTexture = SDL_CreateTextureFromSurface(renderer, playSurface);
+    int playW, playH;
+    SDL_QueryTexture(playTexture, nullptr, nullptr, &playW, &playH);
+    SDL_Rect playRect = { width / 2 - playW / 2, height / 2 - playH / 2, playW, playH };
+    SDL_RenderCopy(renderer, playTexture, nullptr, &playRect);
+    SDL_FreeSurface(playSurface);
+    SDL_DestroyTexture(playTexture);
+
+    SDL_Surface* exitSurface = TTF_RenderText_Solid(font, exitText, selectedMenuOption == 1 ? selectedColor : normalColor);
+    SDL_Texture* exitTexture = SDL_CreateTextureFromSurface(renderer, exitSurface);
+    int exitW, exitH;
+    SDL_QueryTexture(exitTexture, nullptr, nullptr, &exitW, &exitH);
+    SDL_Rect exitRect = { width / 2 - exitW / 2, height / 2 + 50, exitW, exitH };
+    SDL_RenderCopy(renderer, exitTexture, nullptr, &exitRect);
+    SDL_FreeSurface(exitSurface);
+    SDL_DestroyTexture(exitTexture);
+
+    TTF_CloseFont(font);
 
     SDL_RenderPresent(renderer);
 }
-
 
 void Game::resetGame() {
     player.reset();
@@ -574,14 +638,14 @@ bool Game::checkPowerUpCollection() {
 
             if (currentPowerUp == INVINCIBLE) {
                 powerUpDuration = 600;
+                player.setFlying(false);
             } else if (currentPowerUp == HIGH_JUMP) {
                 powerUpDuration = 300;
                 player.setJumpHeight(240);
+                player.setFlying(false);
             } else if (currentPowerUp == FLY) {
                 powerUpDuration = 600;
                 player.setFlying(true);
-            } else {
-                powerUpDuration = 300;
             }
 
             powerUps.erase(powerUps.begin() + i);
@@ -590,3 +654,4 @@ bool Game::checkPowerUpCollection() {
     }
     return false;
 }
+

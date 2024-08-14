@@ -1,6 +1,6 @@
 #include "Bullet.h"
 
-Bullet::Bullet() : speed(50) {
+Bullet::Bullet() : speed(30) {
     bulletRect = { 0, 0, 50, 50 };
 }
 

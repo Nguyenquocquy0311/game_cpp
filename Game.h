@@ -30,7 +30,7 @@ public:
 private:
     void initSDL();
     void closeSDL();
-    SDL_Texture* loadTexture(string path);
+
     void handleEvents();
     void update();
     void draw();
@@ -43,10 +43,14 @@ private:
     SDL_Window* window;
     SDL_Renderer* renderer;
     SDL_Texture* gBulletTexture;
+    SDL_Texture* gPlayerTexture = nullptr;
     SDL_Texture* gObstacleTexture = nullptr;
     SDL_Texture* gEnemyRunTexture = nullptr;
     SDL_Texture* gEnemyFlyTexture = nullptr;
     SDL_Texture* gBackgroundTexture = nullptr;
+    //SDL_Texture* powerUpHighJumpTexture;
+    //SDL_Texture* powerUpFlyTexture;
+    //SDL_Texture* powerUpInvincibleTexture;
     SDL_Surface* gScreenSurface;
     SDL_Surface* gPlayerSurface;
     SDL_Texture* gMenuBackgroundTexture;
@@ -57,6 +61,8 @@ private:
     SDL_Texture* powerUpHighJumpTexture;
     SDL_Texture* powerUpFlyTexture;
     SDL_Texture* powerUpInvincibleTexture;
+
+    SDL_Texture* loadTexture(string path);
 
     int width;
     int height;
@@ -80,10 +86,10 @@ private:
 
     const int minObstacleHeight = 20;
     const int maxObstacleHeight = 100;
-    const int obstacleWidth = 20;
-    const int powerUpWidth = 20;
-    const int powerUpHeight = 20;
-    const int groundHeight = 180;
+    const int obstacleWidth = 30;
+    const int powerUpWidth = 60;
+    const int powerUpHeight = 60;
+    const int groundHeight = 150;
 
 };
 

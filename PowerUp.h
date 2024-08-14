@@ -20,13 +20,12 @@ public:
     SDL_Rect getRect() const;
     PowerUpType getType() const;
     void loadTextures(SDL_Renderer* renderer, const std::string& highJumpPath, const std::string& flyPath, const std::string& invinciblePath);
+    void setTexture(SDL_Texture* highJumpTexture, SDL_Texture* flyTexture, SDL_Texture* invincibleTexture);
 
 private:
     SDL_Rect powerUpRect;
     PowerUpType type;
-    SDL_Texture* highJumpTexture;
-    SDL_Texture* flyTexture;
-    SDL_Texture* invincibleTexture;
+    SDL_Texture* texture;
 };
 
 #endif // POWERUP_H
