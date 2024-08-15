@@ -5,6 +5,7 @@
 #include <SDL_ttf.h>
 
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <thread>
 #include <cstdlib>
@@ -21,7 +22,7 @@ Mix_Chunk* gShootSound = nullptr;
 
 Game::Game() : width(1200), height(700), window(nullptr), renderer(nullptr), gameState(MENU), selectedMenuOption(0),
                selectedGameOverOption(0), quit(false), gameOver(false), currentPowerUp(NONE), powerUpDuration(0), player(width, height),
-               bgX(0), bgSpeed(2) {
+               bgX(0), bgSpeed(0) {
     initSDL();
 }
 
@@ -103,7 +104,18 @@ void Game::initSDL() {
         cerr << "Obstacle image loaded successfully!" << endl;
     }
 
-    gEnemyRunTexture = loadTexture("asset/img/enemy-run-1.png");
+    //gEnemyRunLeftTexture = loadTexture("asset/img/enemy-run-left.png");
+    //gEnemyRunRightTexture = loadTexture("asset/img/enemy-run-left.png");
+    //gEnemyFlyUpTexture = loadTexture("asset/img/enemy-run-left.png");
+    //gEnemyFlyDownTexture = loadTexture("asset/img/enemy-run-left.png");
+    //if (!gEnemyRunLeftTexture || !gEnemyRunRightTexture || !gEnemyFlyUpTexture || !gEnemyFlyDownTexture) {
+        //std::cerr << "Failed to load one or more enemy textures!" << std::endl;
+        //exit(1);
+    //} else {
+        //std::cerr << "Enemy image load succesccfully !!" << endl;
+    //}
+
+    gEnemyRunTexture = loadTexture("asset/img/enemy-run.png");
     if (gEnemyRunTexture == nullptr) {
         cerr << "Failed to load enemy image! SDL Error: " << SDL_GetError() << endl;
         exit(1);
@@ -111,7 +123,7 @@ void Game::initSDL() {
         cerr << "Enemy image loaded successfully!" << endl;
     }
 
-    gEnemyFlyTexture = loadTexture("asset/img/enemy-fly-1.png");
+    gEnemyFlyTexture = loadTexture("asset/img/enemy-fly-left.png");
     if (gEnemyFlyTexture == nullptr) {
         cerr << "Failed to load enemy image! SDL Error: " << SDL_GetError() << endl;
         exit(1);
@@ -137,8 +149,6 @@ void Game::initSDL() {
     }
 
     gMenuBackgroundTexture = loadTexture("asset/img/menu.jpg");
-    gPlayButtonTexture = loadTexture("asset/img/play-btn.png");
-    gExitButtonTexture = loadTexture("asset/img/play-btn.png");
 
     // Sound
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
@@ -188,11 +198,17 @@ void Game::closeSDL() {
     SDL_DestroyTexture(gObstacleTexture);
     gObstacleTexture = nullptr;
 
-    SDL_DestroyTexture(gEnemyRunTexture);
-    gEnemyRunTexture = nullptr;
+    SDL_DestroyTexture(gEnemyRunLeftTexture);
+    gEnemyRunLeftTexture = nullptr;
 
-    SDL_DestroyTexture(gEnemyFlyTexture);
-    gEnemyFlyTexture = nullptr;
+    SDL_DestroyTexture(gEnemyRunRightTexture);
+    gEnemyRunRightTexture = nullptr;
+
+    SDL_DestroyTexture(gEnemyFlyUpTexture);
+    gEnemyFlyUpTexture = nullptr;
+
+    SDL_DestroyTexture(gEnemyFlyDownTexture);
+    gEnemyFlyDownTexture = nullptr;
 
     SDL_DestroyTexture(powerUpHighJumpTexture);
     powerUpHighJumpTexture = nullptr;
@@ -302,6 +318,7 @@ void Game::update() {
             if (SDL_HasIntersection(&bulletRect, &enemyRect)) {
                 bullets.erase(bullets.begin() + i);
                 enemies.erase(enemies.begin() + j);
+                updateScore();
                 break;
             }
         }
@@ -336,69 +353,62 @@ void Game::update() {
         obstacle.update();
     }
 
-    if (rand() % 100 < 0) {  // Xác suất xuất hiện quái vật
-        int side = rand() % 4; // Chọn ngẫu nhiên cạnh màn hình để xuất hiện quái vật
-        int x, y, direction;
-        int width = 50;
-        int height = 50;
-        SDL_Texture* enemyTexture;
+    if (rand() % 100 < 5) {  // Xác suất xuất hiện quái vật
+        int x = width;
+        int y = rand() % (height - 250);
 
-        switch (side) {
-            case 0: // Từ cạnh trái
-                x = -width;
-                y = rand() % (height - 100) + 100;
-                direction = 1;  // Di chuyển sang phải
-                break;
-            case 1: // Từ cạnh phải
-                x = 1200;
-                y = rand() % (height - 100) + 100;
-                direction = 0;  // Di chuyển sang trái
-
-                break;
-            case 2: // Từ cạnh trên
-                x = rand() % 1200; // Phạm vi chiều ngang
-                y = -height;
-                direction = 2;  // Di chuyển xuống
-                break;
-            case 3:
-                x = rand() % 1200;
-                y = 700 - height;
-                direction = 3;
-                break;
+        if (rand() % 100 < 70) {
+            y = height - 220;
+        } else {
+            y = rand() % (height - 300);
         }
 
-        SDL_Rect newEnemyRect = {x, y, width, height};
+        int enemyWidth, enemyHeight;
+
+        bool isRunning = (y == height - 220);
+
+        if (isRunning) {
+            enemyWidth = 85;
+            enemyHeight = 76;
+        } else {
+            enemyWidth = 105;
+            enemyHeight = 80;
+        }
+
+        SDL_Rect newEnemyRect = {x, y, enemyWidth, enemyHeight};
         bool canPlaceEnemy = true;
-        int minDistance = 200;  // Khoảng cách tối thiểu giữa các quái vật
 
         for (const auto& enemy : enemies) {
-            if (!isFarEnough(newEnemyRect, enemy.getRect(), minDistance)) {
+            SDL_Rect existingEnemyRect = enemy.getRect();
+            if (SDL_HasIntersection(&newEnemyRect, &existingEnemyRect)) {
                 canPlaceEnemy = false;
                 break;
             }
         }
 
         if (canPlaceEnemy) {
-            if (y == groundHeight) {
-                enemyTexture = gEnemyRunTexture;
+            Enemy newEnemy(x, y, enemyWidth, enemyHeight, groundHeight, isRunning);
+
+            if (isRunning) {
+                newEnemy.setTexture(gEnemyRunTexture);
             } else {
-                enemyTexture = gEnemyFlyTexture;
+                newEnemy.setTexture(gEnemyFlyTexture);
             }
 
-            enemies.push_back(Enemy(x, y, width, height, direction));
-            enemies.back().setTexture(enemyTexture);  // Gán texture tương ứng cho quái vật
+            enemies.push_back(newEnemy);
         }
     }
 
-    if (rand() % 300 < 0) {
+    if (rand() % 300 < 1) {
         int obstacleHeight = minObstacleHeight + rand() % (maxObstacleHeight - minObstacleHeight + 1);
-        obstacles.push_back(Obstacle(width, height - groundHeight - obstacleHeight, obstacleWidth, obstacleHeight));
+        int obstacleWidth = minObstacleWidth + rand() % (maxObstacleWidth - minObstacleWidth + 1);
+        obstacles.push_back(Obstacle(width, height - groundHeight - obstacleHeight + 10, obstacleWidth, obstacleHeight));
     }
 
-    if (rand() % 100 < 5) {
+    if (rand() % 100 < 1) {
         int x = width;
-        int y = height - groundHeight - powerUpHeight;
-        PowerUpType type = static_cast<PowerUpType>(rand() % 3 + 1);
+        int y = height - groundHeight - powerUpHeight - 10;
+        PowerUpType type = static_cast<PowerUpType>(rand() % 3);
         PowerUp powerUp(x, y, powerUpWidth, powerUpHeight, type);
         powerUp.setTexture(powerUpHighJumpTexture, powerUpFlyTexture, powerUpInvincibleTexture);
 
@@ -431,12 +441,12 @@ void Game::update() {
     }), bullets.end());
 
     if (checkCollision()) {
+        cerr << "Collision detected, setting gameOver to true." << std::endl;
         gameOver = true;
     }
 
-    checkPowerUpCollection();
-
     if (powerUpDuration > 0) {
+        checkPowerUpCollection();
         powerUpDuration--;
         if (powerUpDuration == 0) {
             if (currentPowerUp == HIGH_JUMP) {
@@ -446,6 +456,33 @@ void Game::update() {
             }
             currentPowerUp = NONE;
         }
+    }
+}
+
+void Game::loadHighScore() {
+    std::ifstream file(highScoreFile);
+    if (file.is_open()) {
+        file >> highScore;
+        file.close();
+    } else {
+        cerr << "Failed to load score from this file !!!" << endl;
+        highScore = 0;
+    }
+}
+
+void Game::saveHighScore() {
+    std::ofstream file(highScoreFile);
+    if (file.is_open()) {
+        file << highScore;
+        file.close();
+    }
+}
+
+void Game::updateScore() {
+    score += 10;
+    if (score > highScore) {
+        highScore = score;
+        saveHighScore();
     }
 }
 
@@ -482,11 +519,33 @@ void Game::draw() {
         bullet.draw(renderer, gBulletTexture);
     }
 
+    drawScore();
+
     SDL_RenderPresent(renderer);
 }
 
+void Game::drawScore() {
+    TTF_Font* font = TTF_OpenFont("asset/fonts/Atop-R99O3.ttf", 24);
+    if (!font) {
+        std::cerr << "Failed to load font! TTF_Error: " << TTF_GetError() << std::endl;
+        exit(1);
+    }
+
+    SDL_Color color = {255, 255, 255, 255};
+    std::string scoreText = "Score: " + std::to_string(score);
+    SDL_Surface* scoreSurface = TTF_RenderText_Solid(font, scoreText.c_str(), color);
+    SDL_Texture* scoreTexture = SDL_CreateTextureFromSurface(renderer, scoreSurface);
+    int scoreW, scoreH;
+    SDL_QueryTexture(scoreTexture, nullptr, nullptr, &scoreW, &scoreH);
+    SDL_Rect scoreRect = { width - scoreW - 20, 20, scoreW, scoreH };
+    SDL_RenderCopy(renderer, scoreTexture, nullptr, &scoreRect);
+    SDL_FreeSurface(scoreSurface);
+    SDL_DestroyTexture(scoreTexture);
+
+    TTF_CloseFont(font);
+}
+
 void Game::drawMenu(bool isGameOverMenu) {
-    //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
     SDL_Rect bgRect = { 0, 0, width, height };
@@ -527,10 +586,21 @@ void Game::drawMenu(bool isGameOverMenu) {
     SDL_Texture* exitTexture = SDL_CreateTextureFromSurface(renderer, exitSurface);
     int exitW, exitH;
     SDL_QueryTexture(exitTexture, nullptr, nullptr, &exitW, &exitH);
-    SDL_Rect exitRect = { width / 2 - exitW / 2, height / 2 + 50, exitW, exitH };
+    SDL_Rect exitRect = { width / 2 - exitW / 2, height / 2 + 30, exitW, exitH };
     SDL_RenderCopy(renderer, exitTexture, nullptr, &exitRect);
     SDL_FreeSurface(exitSurface);
     SDL_DestroyTexture(exitTexture);
+
+    loadHighScore();
+    std::string highScoreText = "High Score: " + std::to_string(highScore);
+    SDL_Surface* highScoreSurface = TTF_RenderText_Solid(font, highScoreText.c_str(), normalColor);
+    SDL_Texture* highScoreTexture = SDL_CreateTextureFromSurface(renderer, highScoreSurface);
+    int highScoreW, highScoreH;
+    SDL_QueryTexture(highScoreTexture, nullptr, nullptr, &highScoreW, &highScoreH);
+    SDL_Rect highScoreRect = { width / 2 - highScoreW / 2, height / 2 + 80, highScoreW, highScoreH };
+    SDL_RenderCopy(renderer, highScoreTexture, nullptr, &highScoreRect);
+    SDL_FreeSurface(highScoreSurface);
+    SDL_DestroyTexture(highScoreTexture);
 
     TTF_CloseFont(font);
 
@@ -538,6 +608,7 @@ void Game::drawMenu(bool isGameOverMenu) {
 }
 
 void Game::resetGame() {
+    score = 0;
     player.reset();
     obstacles.clear();
     powerUps.clear();
@@ -550,14 +621,6 @@ void Game::resetGame() {
     gameOver = false;
 
     // Khởi tạo Enemy ban đầu
-    for (int i = 0; i < 5; i++) {
-        int x = rand() % 1200;
-        int y = height - 140;
-        int width = 20;
-        int height = 40;
-        int direction = rand() % 4;
-        enemies.push_back(Enemy(x, y, width, height, direction));
-    }
 }
 
 void Game::handleMenuInput(SDL_Keycode key) {
@@ -607,6 +670,8 @@ bool Game::checkCollision() {
 
         if (SDL_HasIntersection(&adjustedPlayerRect, &adjustedObstacleRect)) {
             return true;
+            std::cerr << "Player position: (" << playerRect.x << ", " << playerRect.y << ")" << std::endl;
+            std::cerr << "Game over triggered due to collision: Player vs Obstacle" << std::endl;
         }
     }
 
@@ -622,6 +687,9 @@ bool Game::checkCollision() {
 
         if (SDL_HasIntersection(&adjustedPlayerRect, &adjustedEnemyRect)) {
             return true;
+            cerr << "Player position: (" << playerRect.x << ", " << playerRect.y << ")" << endl;
+            cerr << "Game over triggered due to collision: Player vs Enemy" << endl;
+
         }
     }
 
@@ -641,7 +709,7 @@ bool Game::checkPowerUpCollection() {
                 player.setFlying(false);
             } else if (currentPowerUp == HIGH_JUMP) {
                 powerUpDuration = 300;
-                player.setJumpHeight(240);
+                player.setJumpHeight(180);
                 player.setFlying(false);
             } else if (currentPowerUp == FLY) {
                 powerUpDuration = 600;

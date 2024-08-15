@@ -26,6 +26,9 @@ private:
     SDL_Rect powerUpRect;
     PowerUpType type;
     SDL_Texture* texture;
+
+    int alpha; // Độ trong suốt hiện tại
+    int alphaDirection; // Hướng thay đổi của alpha
 };
 
 #endif // POWERUP_H

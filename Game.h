@@ -39,6 +39,10 @@ private:
     void handleMenuInput(SDL_Keycode key);
     bool checkCollision();
     bool checkPowerUpCollection();
+    void loadHighScore();
+    void saveHighScore();
+    void updateScore();
+    void drawScore();
 
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -56,6 +60,11 @@ private:
     SDL_Texture* gMenuBackgroundTexture;
     SDL_Texture* gPlayButtonTexture;
     SDL_Texture* gExitButtonTexture;
+
+    SDL_Texture* gEnemyRunLeftTexture;
+    SDL_Texture* gEnemyRunRightTexture;
+    SDL_Texture* gEnemyFlyUpTexture;
+    SDL_Texture* gEnemyFlyDownTexture;
 
     SDL_Rect playerRect;
     SDL_Texture* powerUpHighJumpTexture;
@@ -83,12 +92,16 @@ private:
     int powerUpDuration;
     int bgX;
     int bgSpeed;
+    int score;
+    int highScore;
+    std::string highScoreFile = "highscore.txt";
 
     const int minObstacleHeight = 20;
-    const int maxObstacleHeight = 100;
-    const int obstacleWidth = 30;
-    const int powerUpWidth = 60;
-    const int powerUpHeight = 60;
+    const int maxObstacleHeight = 200;
+    const int minObstacleWidth = 50;
+    const int maxObstacleWidth = 100;
+    const int powerUpWidth = 50;
+    const int powerUpHeight = 50;
     const int groundHeight = 150;
 
 };

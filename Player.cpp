@@ -4,9 +4,9 @@
 
 Player::Player(int screenWidth, int screenHeight)
     : isJumping(false), isFalling(false), isFlying(false), jumpSpeed(8), fallSpeed(8), flySpeed(15),
-      currentJumpHeight(120), playerSpeed(10), currentFrame(0), frameWidth(48), frameHeight(64),
-      totalFrames(6), frameSpeed(10), flyHeight(500) {
-    playerRect = { 300, screenHeight - 250, 120, 120};
+      currentJumpHeight(80), playerSpeed(10), currentFrame(0), frameWidth(107), frameHeight(100),
+      totalFrames(6), frameSpeed(4), flyHeight(500) {
+    playerRect = { 300, screenHeight - 250, 100, 100};
     width = screenWidth;
     height = screenHeight;
 }
@@ -25,7 +25,7 @@ void Player::handleInput(SDL_Keycode key, std::vector<Bullet>& bullets) {
             }
         } else if (key == SDLK_SPACE) {
             Bullet newBullet;
-            newBullet.bulletRect = { playerRect.x - 40 + playerRect.w, playerRect.y + playerRect.h / 2 + 10, 30, 10 };
+            newBullet.bulletRect = { playerRect.x - 10 + playerRect.w, playerRect.y + playerRect.h / 2 + 10, 30, 10 };
             newBullet.speed = 15;
             bullets.push_back(newBullet);
             Mix_PlayChannel(-1, gShootSound, 0);
@@ -37,7 +37,7 @@ void Player::handleInput(SDL_Keycode key, std::vector<Bullet>& bullets) {
             currentFrame = 0;
         } else if (key == SDLK_SPACE) {
             Bullet newBullet;
-            newBullet.bulletRect = { playerRect.x - 40 + playerRect.w, playerRect.y + playerRect.h / 2 + 10, 30, 10 };
+            newBullet.bulletRect = { playerRect.x - 10 + playerRect.w, playerRect.y + playerRect.h / 2 + 10, 30, 10 };
             newBullet.speed = 15;
             bullets.push_back(newBullet);
             Mix_PlayChannel(-1, gShootSound, 0);
@@ -48,10 +48,16 @@ void Player::handleInput(SDL_Keycode key, std::vector<Bullet>& bullets) {
 void Player::update() {
     if (isFlying) {
         currentFrame = 0;
-        if (playerRect.y > flyHeight) {
-            playerRect.y -= flySpeed;
-        } else if (playerRect.y < flyHeight) {
-            playerRect.y += flySpeed;
+        int tolerance = 5;
+
+        if (abs(playerRect.y - flyHeight) > tolerance) {
+            if (playerRect.y > flyHeight) {
+                playerRect.y -= flySpeed;
+            } else if (playerRect.y < flyHeight) {
+                playerRect.y += flySpeed;
+            }
+        } else {
+            playerRect.y = flyHeight;
         }
 
         if (playerRect.y + playerRect.h > height - 180) {
@@ -89,13 +95,11 @@ void Player::update() {
             playerRect.x = width - playerRect.w;
         }
 
-        // Chuyển khung hình khi di chuyển tới trước
         currentFrame++;
         if (currentFrame >= totalFrames * frameSpeed) {
             currentFrame = 0;
         }
     } else if (!isJumping && !isFlying) {
-        // Luôn luôn di chuyển khung hình khi di chuyển tới trước
         currentFrame++;
         if (currentFrame >= totalFrames * frameSpeed) {
             currentFrame = 0;
@@ -114,7 +118,7 @@ void Player::reset() {
     isJumping = false;
     isFalling = false;
     isFlying = false;
-    currentJumpHeight = 120;
+    currentJumpHeight = 80;
     flyHeight = 500;
 }
 
@@ -135,5 +139,10 @@ void Player::setFlying(bool flying) {
     if (flying) {
         flyHeight = playerRect.y - 200;
         currentFrame = 0;
+    } else {
+        if (playerRect.y < height - 250) {
+            isFalling = true;
+        }
     }
 }
+
