@@ -38,7 +38,7 @@ void PowerUp::draw(SDL_Renderer* renderer) const {
     if (texture != nullptr) {
         //SDL_RenderCopy(renderer, texture, nullptr, &powerUpRect);
 
-        SDL_SetTextureAlphaMod(texture, alpha); // Đặt độ trong suốt của texture
+        SDL_SetTextureAlphaMod(texture, alpha);
         SDL_RenderCopy(renderer, texture, nullptr, &powerUpRect);
     }
 }

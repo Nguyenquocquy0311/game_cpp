@@ -23,9 +23,8 @@ void Enemy::setTexture(SDL_Texture* texture) {
 
 void Enemy::update() {
     enemyRect.x -= speed;
-
-    // Cập nhật frame cho animation
     currentFrame++;
+
     if (currentFrame >= totalFrames * frameSpeed) {
         currentFrame = 0;
     }

@@ -1,11 +1,12 @@
 #include "Player.h"
 #include "Game.h"
 #include <SDL_mixer.h>
+#include <SDL_ttf.h>
 
 Player::Player(int screenWidth, int screenHeight)
-    : isJumping(false), isFalling(false), isFlying(false), jumpSpeed(8), fallSpeed(8), flySpeed(15),
+    : isJumping(false), isFalling(false), isFlying(false), hasAxe(false), jumpSpeed(8), fallSpeed(8), flySpeed(15),
       currentJumpHeight(80), playerSpeed(10), currentFrame(0), frameWidth(107), frameHeight(100),
-      totalFrames(6), frameSpeed(4), flyHeight(500) {
+      totalFrames(6), frameSpeed(4), flyHeight(500), stamina(250), bulletCount(20) {
     playerRect = { 300, screenHeight - 250, 100, 100};
     width = screenWidth;
     height = screenHeight;
@@ -23,24 +24,27 @@ void Player::handleInput(SDL_Keycode key, std::vector<Bullet>& bullets) {
             if (playerRect.y + playerRect.h > height) {
                 playerRect.y = height - playerRect.h - 210;
             }
-        } else if (key == SDLK_SPACE) {
+        } else if (key == SDLK_SPACE && bulletCount > 0) {
             Bullet newBullet;
             newBullet.bulletRect = { playerRect.x - 10 + playerRect.w, playerRect.y + playerRect.h / 2 + 10, 30, 10 };
             newBullet.speed = 15;
             bullets.push_back(newBullet);
             Mix_PlayChannel(-1, gShootSound, 0);
+            bulletCount--;
         }
     } else {
-        if (key == SDLK_UP && !isJumping && !isFalling) {
+        if (key == SDLK_UP && !isJumping && !isFalling && stamina > 0) {
             isJumping = true;
             Mix_PlayChannel(-1, gJumpSound, 0);
             currentFrame = 0;
-        } else if (key == SDLK_SPACE) {
+            stamina -= 10;
+        } else if (key == SDLK_SPACE && bulletCount > 0) {
             Bullet newBullet;
             newBullet.bulletRect = { playerRect.x - 10 + playerRect.w, playerRect.y + playerRect.h / 2 + 10, 30, 10 };
             newBullet.speed = 15;
             bullets.push_back(newBullet);
             Mix_PlayChannel(-1, gShootSound, 0);
+            bulletCount--;
         }
     }
 }
@@ -88,11 +92,13 @@ void Player::update() {
         playerRect.x -= playerSpeed;
         if (playerRect.x < 0) {
             playerRect.x = 0;
+            stamina -= 10;
         }
     } else if (state[SDL_SCANCODE_RIGHT]) {
         playerRect.x += playerSpeed;
         if (playerRect.x > width - playerRect.w) {
             playerRect.x = width - playerRect.w;
+            stamina -= 5;
         }
 
         currentFrame++;
@@ -108,10 +114,48 @@ void Player::update() {
 }
 
 
-void Player::draw(SDL_Renderer* renderer, SDL_Texture* texture) {
+void Player::draw(SDL_Renderer* renderer, SDL_Texture* texture, TTF_Font* font) {
     SDL_Rect srcRect = { (currentFrame / frameSpeed) * frameWidth, 0, frameWidth, frameHeight };
     SDL_RenderCopy(renderer, texture, &srcRect, &playerRect);
+
+    drawStaminaBar(renderer, font);
 }
+
+void Player::drawStaminaBar(SDL_Renderer* renderer, TTF_Font* font) const {
+    int barWidth = 100;
+    int barHeight = 10;
+
+    int currentBarWidth = (stamina * barWidth) / 200;
+
+    int barX = playerRect.x;
+    int barY = playerRect.y - barHeight - 5;
+
+    SDL_Rect staminaBarBackground = { barX, barY, barWidth, barHeight };
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_RenderFillRect(renderer, &staminaBarBackground);
+
+    SDL_Rect staminaBarForeground = { barX, barY, currentBarWidth, barHeight };
+    SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
+    SDL_RenderFillRect(renderer, &staminaBarForeground);
+
+    std::string staminaText = std::to_string(stamina);
+    SDL_Color textColor = { 255, 255, 255, 255 };
+    SDL_Surface* textSurface = TTF_RenderText_Solid(font, staminaText.c_str(), textColor);
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+
+    int textX = barX + barWidth + 5;
+    int textY = barY - 7;
+
+    int textW = textSurface->w;
+    int textH = textSurface->h;
+
+    SDL_Rect textRect = { textX, textY, textW, textH };
+    SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
+
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+}
+
 
 void Player::reset() {
     playerRect = { 100, height - 250, 100, 100 };
@@ -120,6 +164,7 @@ void Player::reset() {
     isFlying = false;
     currentJumpHeight = 80;
     flyHeight = 500;
+    stamina = 200;
 }
 
 SDL_Rect Player::getRect() const {
@@ -145,4 +190,33 @@ void Player::setFlying(bool flying) {
         }
     }
 }
+
+void Player::collectAxe(bool hasAxe) {
+    this->hasAxe = hasAxe;
+}
+
+void Player::increaseStamina(int amount) {
+    stamina += amount;
+
+    if (stamina > 200) {
+        stamina = 200;
+    }
+}
+
+bool Player::canBreakObstacle() const {
+    return hasAxe;
+}
+
+void Player::increaseBullets(int bullet) {
+    bulletCount += bullet;
+}
+
+int Player::getBulletCount() const {
+    return bulletCount;
+}
+
+void Player::resetBullet() {
+    bulletCount = 20;
+}
+
 

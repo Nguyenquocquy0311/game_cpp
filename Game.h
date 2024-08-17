@@ -11,14 +11,22 @@
 #include "Obstacle.h"
 #include "PowerUp.h"
 #include "Enemy.h"
+#include "Item.h"
 
 using namespace std;
 
 enum GameState { MENU, PLAYING, GAME_OVER };
 
 extern Mix_Music* gBackgroundMusic;
+extern Mix_Music* gPlayMusic;
 extern Mix_Chunk* gJumpSound;
 extern Mix_Chunk* gShootSound;
+extern Mix_Chunk* gEnemySpawnSound;
+extern Mix_Chunk* gItemCollectSound;
+extern Mix_Chunk* gPowerUpCollectSound;
+extern Mix_Chunk* gCollisionSound;
+extern Mix_Chunk* gCollisionObsSound;
+extern Mix_Chunk* gWinSound;
 
 class Game {
 public:
@@ -70,6 +78,10 @@ private:
     SDL_Texture* powerUpHighJumpTexture;
     SDL_Texture* powerUpFlyTexture;
     SDL_Texture* powerUpInvincibleTexture;
+    SDL_Texture* gAxeTexture;
+    SDL_Texture* gMapTexture;
+    SDL_Texture* gDrumstickTexture;
+    SDL_Texture* gBagTexture;
 
     SDL_Texture* loadTexture(string path);
 
@@ -86,6 +98,7 @@ private:
     std::vector<PowerUp> powerUps;
     std::vector<Enemy> enemies;
     std::vector<Bullet> bullets;
+    std::vector<Item> items;
 
     bool gameOver;
     PowerUpType currentPowerUp;
@@ -95,11 +108,12 @@ private:
     int score;
     int highScore;
     std::string highScoreFile = "highscore.txt";
+    int mapCount;
 
-    const int minObstacleHeight = 20;
+    const int minObstacleHeight = 50;
     const int maxObstacleHeight = 200;
-    const int minObstacleWidth = 50;
-    const int maxObstacleWidth = 100;
+    const int minObstacleWidth = 60;
+    const int maxObstacleWidth = 120;
     const int powerUpWidth = 50;
     const int powerUpHeight = 50;
     const int groundHeight = 150;
