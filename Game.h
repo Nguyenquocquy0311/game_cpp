@@ -60,14 +60,9 @@ private:
     SDL_Texture* gEnemyRunTexture = nullptr;
     SDL_Texture* gEnemyFlyTexture = nullptr;
     SDL_Texture* gBackgroundTexture = nullptr;
-    //SDL_Texture* powerUpHighJumpTexture;
-    //SDL_Texture* powerUpFlyTexture;
-    //SDL_Texture* powerUpInvincibleTexture;
     SDL_Surface* gScreenSurface;
     SDL_Surface* gPlayerSurface;
     SDL_Texture* gMenuBackgroundTexture;
-    SDL_Texture* gPlayButtonTexture;
-    SDL_Texture* gExitButtonTexture;
 
     SDL_Texture* gEnemyRunLeftTexture;
     SDL_Texture* gEnemyRunRightTexture;

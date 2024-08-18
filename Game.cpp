@@ -248,12 +248,6 @@ void Game::closeSDL() {
     SDL_DestroyTexture(gMenuBackgroundTexture);
     gMenuBackgroundTexture = nullptr;
 
-    SDL_DestroyTexture(gPlayButtonTexture);
-    gPlayButtonTexture = nullptr;
-
-    SDL_DestroyTexture(gExitButtonTexture);
-    gExitButtonTexture = nullptr;
-
     SDL_DestroyTexture(gPlayerTexture);
     gPlayerTexture = nullptr;
 
