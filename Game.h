@@ -109,8 +109,8 @@ private:
     const int maxObstacleHeight = 200;
     const int minObstacleWidth = 60;
     const int maxObstacleWidth = 120;
-    const int powerUpWidth = 50;
-    const int powerUpHeight = 50;
+    const int powerUpWidth = 60;
+    const int powerUpHeight = 60;
     const int groundHeight = 150;
 
 };

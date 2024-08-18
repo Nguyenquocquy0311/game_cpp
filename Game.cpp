@@ -152,7 +152,7 @@ void Game::initSDL() {
         cerr << "Powerup image loaded successfully!" << endl;
     }
 
-    gAxeTexture = loadTexture("asset/img/kick.png");
+    gAxeTexture = loadTexture("asset/img/axe.png");
     gMapTexture = loadTexture("asset/img/map.png");
     gDrumstickTexture = loadTexture("asset/img/bread.png");
     gBagTexture = loadTexture("asset/img/bag.png");
@@ -398,8 +398,6 @@ void Game::update() {
     }
 
     player.update();
-    //SDL_Rect adjustedPlayerRect = player.getRect();
-    //adjustedPlayerRect.y -= 50;
 
     for (size_t i = 0; i < bullets.size(); ++i) {
         for (size_t j = 0; j < enemies.size(); ++j) {
@@ -483,7 +481,7 @@ void Game::update() {
         int x = width;
         int y = rand() % (height - 250);
 
-        if (rand() % 100 < 70) {
+        if (rand() % 100 < 60) {
             y = height - 230;
         } else {
             y = rand() % (height - 300);
@@ -607,7 +605,7 @@ void Game::update() {
 
         for (const auto& obstacle : obstacles) {
             SDL_Rect obstacleRect = obstacle.getRect();
-            if (SDL_HasIntersection(&newPowerupRect, &obstacleRect)) {
+            if (SDL_HasIntersection(&newPowerupRect, &obstacleRect) || !isFarEnough(newPowerupRect, obstacleRect, 100)) {
                 canPlacePowerup = false;
                 break;
             }
@@ -907,8 +905,8 @@ bool Game::checkCollision() {
         SDL_Rect obstacleRect = obstacle.getRect();
 
         SDL_Rect adjustedObstacleRect = {
-            obstacleRect.x + 5,
-            obstacleRect.y + 5,
+            obstacleRect.x,
+            obstacleRect.y,
             obstacleRect.w - 10,
             obstacleRect.h - 10
         };
